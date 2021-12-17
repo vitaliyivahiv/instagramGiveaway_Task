@@ -1,181 +1,201 @@
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
 console.log('code runing...');
 var fs = require('fs');
 var dir = './words';
+var totalCodeStart = new Date().getTime();
+console.log(' dir = ', dir);
 var getFiles = function () {
     //find out how many files are there in words folder 
     var fileCount = fs.readdirSync(dir).length;
     var arraysOfWords = [];
     for (var i = 0; i < fileCount; i++) {
-        var fileWords = fs.readFileSync("words/out".concat(i, ".txt")).toString().split('\n');
+        var fileWords = fs.readFileSync("".concat(dir, "/out").concat(i, ".txt")).toString().split('\n');
         arraysOfWords.push(fileWords);
     }
     return arraysOfWords;
 };
-var deleteByIndex = function (list, wordsList) {
+var deleteByIndexes = function (list, wordsList) {
     list.reverse().forEach(function (index) {
         wordsList.splice(index, 1);
     });
     return wordsList;
 };
-var copyArray = function (original) {
-    var copy = [];
-    for (var i = 0; i < original.length; i++) {
-        copy.push(original[i].slice());
+var binarySearch = function (word, arr) {
+    var lowerBound = 0;
+    var upperBound = arr.length - 1;
+    var counter = 0;
+    while (lowerBound <= upperBound) {
+        counter++;
+        var midpoint = Math.floor((lowerBound + upperBound) / 2);
+        var guess = arr[midpoint];
+        if (guess > word) {
+            upperBound = midpoint - 1;
+        }
+        else if (guess < word) {
+            lowerBound = midpoint + 1;
+        }
+        else {
+            return midpoint;
+        }
     }
-    return copy;
+    return -1;
 };
-var findUniqueInArray = function (arrayInput) {
-    var arrayCopy = copyArray(arrayInput);
+var findUniqueInArray = function (array) {
     var uniqueWords = [];
-    do {
-        //get first word of arrayCopy
-        var buff = [
-            {
-                word: arrayCopy[0],
-                index: 0
-            },
-        ];
-        //compare it to other words and get duplicates
-        for (var i = 1; i < arrayCopy.length; i++) {
-            if (arrayCopy[i] === buff[0].word) {
-                buff.push({
-                    word: arrayCopy[i],
-                    index: i
-                });
+    while (array.length) {
+        var wordToSearch = array[0];
+        var indexOfWord = void 0;
+        var isUnique = true;
+        indexOfWord = binarySearch(wordToSearch, array);
+        //cound rest of word encounters in the first part of array
+        if (array[indexOfWord - 1] === wordToSearch || array[indexOfWord + 1] === wordToSearch) {
+            isUnique = false;
+        }
+        //find end of group of the same words
+        for (var iUp = indexOfWord + 1; iUp < array.length; iUp++) {
+            if (array[iUp] !== wordToSearch) {
+                wordToSearch = array[iUp];
+                array.splice(0, iUp);
+                break;
             }
         }
-        //if buffer word is unique push it to array for unique words
-        if (buff.length === 1) {
-            uniqueWords.push(buff[0].word);
+        if (isUnique) {
+            uniqueWords.push(wordToSearch);
         }
-        //remove duplicates from arrayCopy or at least first element of array
-        arrayCopy = deleteByIndex(buff.map(function (item) { return item.index; }).sort(function (a, b) { return a - b; }), arrayCopy);
-    } while (arrayCopy.length > 1 && arrayCopy.length !== 0);
-    //add last word of the arrayCopy if it's unique
-    if (arrayCopy.length === 1) {
-        uniqueWords.push(arrayCopy[0]);
+        if (wordToSearch === array[array.length - 1]) {
+            break;
+        }
     }
     return uniqueWords;
-};
-var findDuplicatesAcross = function (wordArrays) {
-    var wordArraysCopy = copyArray(wordArrays);
-    var duplicates = [];
-    for (var k = 0; k < wordArraysCopy.length - 1; k++) {
-        var array1 = wordArraysCopy[k];
-        for (var i = k + 1; i < wordArraysCopy.length; i++) {
-            var array2 = wordArraysCopy[i];
-            for (var arr1Index = 0; arr1Index < array1.length; arr1Index++) {
-                for (var arr2Index = 0; arr2Index < array2.length; arr2Index++) {
-                    if (array1[arr1Index] === array2[arr2Index] && duplicates.indexOf(array1[arr1Index]) === -1) {
-                        duplicates.push(array1[arr1Index]);
-                        array2.splice(arr2Index, 1);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    return duplicates;
 };
 var uniqueValues = function () {
     var files = getFiles();
-    //read all files and get unique words of each file
+    //combine all files into one array
+    var allWords = files.flat();
+    //sort array
+    allWords.sort();
     var uniquePerFile = [];
-    for (var i = 0; i < files.length; i++) {
-        var fileWords = fs.readFileSync("words/out".concat(i, ".txt")).toString().split('\n');
-        uniquePerFile.push(findUniqueInArray(fileWords));
-    }
-    //get duplicates acros arrays of unique words
-    var duplicates = findDuplicatesAcross(uniquePerFile.slice());
-    //remove duplicates from arrays with unique word
-    var uniqueWordsArrays = [];
-    for (var wordsArrayIndex = 0; wordsArrayIndex < uniquePerFile.length; wordsArrayIndex++) {
-        var wordsArray = uniquePerFile[wordsArrayIndex];
-        var duplicatesIdexes = [];
-        for (var i = 0; i < duplicates.length; i++) {
-            var duplicateIndex = wordsArray.indexOf(duplicates[i]);
-            if (duplicateIndex !== -1 && duplicatesIdexes.indexOf(duplicateIndex) === -1) {
-                duplicatesIdexes.push(duplicateIndex);
+    files.forEach(function (file) {
+        var uniqueWords = findUniqueInArray(__spreadArray([], file, true));
+        uniquePerFile.push(__spreadArray([], uniqueWords, true));
+    });
+    var uniqueWords = findUniqueInArray(uniquePerFile.flat());
+    console.log("there are ".concat(uniqueWords.length, " unique words in all given files"));
+};
+//One of this two removeDuplicates functions is wrong. Both seem to be correct but give different results  
+var removeDuplicates = function (arr) {
+    arr.forEach(function (word) {
+        var indexOfWord = binarySearch(word, arr);
+        var lowerBound = indexOfWord;
+        var upperBound = indexOfWord;
+        for (var i = indexOfWord - 1; i >= 0; i--) {
+            if (arr[i] !== word) {
+                lowerBound = i + 1;
+                break;
             }
         }
-        if (duplicatesIdexes.length) {
-            var wordsToPush = deleteByIndex(duplicatesIdexes.sort(function (a, b) { return a - b; }), wordsArray);
-            uniqueWordsArrays.push(wordsToPush);
-            duplicatesIdexes = [];
+        for (var i = indexOfWord + 1; i < arr.length; i++) {
+            if (arr[i] !== word) {
+                upperBound = i - 1;
+                break;
+            }
         }
-    }
-    var uniqueWords = uniqueWordsArrays.flat();
-    console.log('unique words in all given files = ', uniqueWords.length, uniqueWords);
-};
-var getAllWordsWithoutDuplicates = function (arrayInput) {
-    var uniqueWords = [];
-    for (var i = 0; i < arrayInput.length; i++) {
-        if (uniqueWords.indexOf(arrayInput[i]) !== 1) {
-            uniqueWords.push(arrayInput[i]);
+        if (upperBound !== lowerBound) {
+            arr.splice(lowerBound, upperBound - lowerBound);
         }
-    }
-    return uniqueWords;
+    });
 };
-// const findInFile
+// const removeDuplicates = (arr: string[]): void => {
+//     arr.forEach(word => {
+//         const indexOfWord = binarySearch(word, arr);
+//         let duplicatesIndexes: number[] = [];
+//         for (let i = indexOfWord - 1; i >=0; i--) {
+//             if (arr[i] === word) {
+//                 duplicatesIndexes.push(i);
+//             } else break;
+//         }
+//         for (let i = indexOfWord + 1; i < arr.length; i++) {
+//             if (arr[i] === word) {
+//                 duplicatesIndexes.push(i);
+//             } else break;
+//         }
+//         deleteByIndexes(duplicatesIndexes, arr);
+//         duplicatesIndexes = [];        
+//     });
+// };
+//get files with words
+var files = getFiles();
+//sort each file
+files.forEach(function (file) { return file.sort(); });
+//remove duplicates in files and shorten the lists
+files.forEach(function (file) { return removeDuplicates(file); });
 var existInAllFiles = function () {
-    //get files with words
-    var files = getFiles();
-    //get words without repeat
-    var withoutDuplicates = [];
-    for (var i = 0; i < files.length; i++) {
-        withoutDuplicates.push(getAllWordsWithoutDuplicates(files[i]));
-    }
-    //get words that exist in all files
     var existsEverywhere = [];
-    for (var i = 0; i < withoutDuplicates.length; i++) {
-        var currentFile = withoutDuplicates[i];
-        for (var j = 0; j < currentFile.length; j++) {
-            var existsInFile = true;
-            var wordToSearch = currentFile[j];
-            for (var k = 0; k < withoutDuplicates.length; k++) {
-                if (withoutDuplicates[k].indexOf(wordToSearch) === -1) {
-                    existsInFile = false;
+    //go through and search each word in each file (without duplicates now)
+    files.forEach(function (file) {
+        files[0].forEach(function (word) {
+            var existsInEachFile = true;
+            for (var i = 0; i < files.length; i++) {
+                var indexOfWord = binarySearch(word, files[i]);
+                if (indexOfWord === -1) {
+                    existsInEachFile = false;
                     break;
                 }
             }
-            if (existsInFile && existsEverywhere.indexOf(wordToSearch)) {
-                existsEverywhere.push(wordToSearch);
+            var isUnique = binarySearch(word, existsEverywhere) === -1;
+            if (existsInEachFile && isUnique) {
+                existsEverywhere.push(word);
             }
-        }
-    }
+        });
+    });
     console.log("there are ".concat(existsEverywhere.length, " words that exist in all given files"));
 };
 var existInAtLeastTen = function () {
-    //get files with words
-    var files = getFiles();
-    //get words without repeat
-    var withoutDuplicates = [];
-    for (var i = 0; i < files.length; i++) {
-        withoutDuplicates.push(getAllWordsWithoutDuplicates(files[i]));
-    }
-    var existsIn10 = [];
-    for (var i = 0; i < withoutDuplicates.length; i++) {
-        var currentFile = withoutDuplicates[i];
-        var counder = 10;
-        for (var j = 0; j < currentFile.length; j++) {
-            var existsInAtLeast10 = true;
-            var wordToSearch = currentFile[j];
-            for (var k = 0; k < withoutDuplicates.length; k++) {
-                if (withoutDuplicates[k].indexOf(wordToSearch) === -1) {
-                    counder--;
+    var existsInTen = [];
+    //go through and search each word in each file (without duplicates now)
+    files.forEach(function (file) {
+        file.forEach(function (word) {
+            var counter = 0;
+            for (var i = 0; i < files.length; i++) {
+                var indexOfWord = binarySearch(word, files[i]);
+                if (indexOfWord !== -1) {
+                    counter++;
                 }
-                if (counder === 0) {
+                else
                     break;
-                    existsInAtLeast10 = false;
-                }
             }
-            if (existsInAtLeast10 && existsIn10.indexOf(wordToSearch)) {
-                existsIn10.push(wordToSearch);
+            var isUnique = binarySearch(word, existsInTen) === -1;
+            if (counter >= 10 && isUnique) {
+                existsInTen.push(word);
             }
-        }
-    }
-    console.log("there are ".concat(existsIn10.length, " words that exist in at least 10 of given files"));
+        });
+    });
+    console.log("there are ".concat(existsInTen.length, " words that exist in at least 10 of given files"));
 };
+var totalProgramStart = new Date().getTime();
+var uniqueValuesStart = new Date().getTime();
 uniqueValues();
+var uniqueValuesEnd = new Date().getTime();
+console.log("uniqueValues took ".concat((uniqueValuesEnd - uniqueValuesStart) / 1000, " seconds"));
+console.log('__________________________________________________');
+var existInAllFilesStart = new Date().getTime();
 existInAllFiles();
+var existInAllFilesEnd = new Date().getTime();
+console.log("existInAllFiles took ".concat((existInAllFilesEnd - existInAllFilesStart) / 1000, " seconds"));
+console.log('__________________________________________________');
+var existInAtLeastTenStart = new Date().getTime();
 existInAtLeastTen();
+var existInAtLeastTenEnd = new Date().getTime();
+console.log("existInAtLeastTen took ".concat((existInAtLeastTenEnd - existInAtLeastTenStart) / 1000, " seconds"));
+console.log('__________________________________________________');
+var totalProgramEnd = new Date().getTime();
+console.log("Three functions took ".concat((totalProgramEnd - totalProgramStart) / 1000, " seconds in total"));
+console.log("Program took ".concat((totalProgramEnd - totalCodeStart) / 1000, " seconds in total"));
